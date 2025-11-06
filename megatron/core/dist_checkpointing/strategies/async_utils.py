@@ -331,6 +331,7 @@ class PersistentAsyncCaller(AsyncCaller):
                     self.comp_q,
                     logger.getEffectiveLevel(),
                 ),
+                daemon=True
             )
             self.process.start()
             logger.info(
