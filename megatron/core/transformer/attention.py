@@ -1,8 +1,10 @@
 # Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+from __future__ import annotations
+
 import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import NoReturn, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import Tensor
@@ -149,8 +151,8 @@ class Attention(MegatronModule, ABC):
         layer_number: int,
         attn_mask_type: AttnMaskType,
         attention_type: str,
-        cp_comm_type: str = None,
-        pg_collection: ProcessGroupCollection = None,
+        cp_comm_type: str | None = None,
+        pg_collection: ProcessGroupCollection | None = None,
     ):
         super().__init__(config=config)
 
@@ -507,7 +509,15 @@ class Attention(MegatronModule, ABC):
 
     @abstractmethod
     def get_query_key_value_tensors(
-        self, hidden_states, key_value_states, output_gate=False, split_qkv=True
+        self,
+        hidden_states: Tensor,
+        key_value_states: Tensor | None,
+        output_gate: bool = False,
+        split_qkv: bool = True,
+    ) -> (
+        tuple[Tensor, Tensor, Tensor, Tensor]
+        | tuple[Tensor, Tensor, Tensor]
+        | tuple[Tensor, list[int]]
     ):
         """
         This method needs to be implemented based on whether the derived class
@@ -525,7 +535,7 @@ class Attention(MegatronModule, ABC):
         rotary_cos: Tensor,
         rotary_sin: Tensor,
         rotary_interleaved: bool = False,
-    ) -> (Tensor, Tensor):
+    ) -> tuple[Tensor, Tensor]:
         """
         The flash decoding kernel will do the following in a single execution:
         1. Compute RoPE embedding with precomputed cos & sin tensors
@@ -716,7 +726,7 @@ class Attention(MegatronModule, ABC):
         sequence_len_offset: Optional[int] = None,
         *,
         inference_params: Optional[BaseInferenceContext] = None,
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """
         Perform a forward pass through the attention module.
 
@@ -1057,9 +1067,9 @@ class SelfAttention(Attention):
         config: TransformerConfig,
         submodules: SelfAttentionSubmodules,
         layer_number: int,
-        attn_mask_type=AttnMaskType.padding,
-        cp_comm_type: str = None,
-        pg_collection: ProcessGroupCollection = None,
+        attn_mask_type: AttnMaskType = AttnMaskType.padding,
+        cp_comm_type: str | None = None,
+        pg_collection: ProcessGroupCollection | None = None,
     ):
         super().__init__(
             config=config,
@@ -1180,7 +1190,15 @@ class SelfAttention(Attention):
             )
 
     def get_query_key_value_tensors(
-        self, hidden_states, key_value_states=None, output_gate=False, split_qkv=True
+        self,
+        hidden_states: Tensor,
+        key_value_states: Tensor | None = None,
+        output_gate: bool = False,
+        split_qkv: bool = True,
+    ) -> (
+        tuple[Tensor, Tensor, Tensor, Tensor]
+        | tuple[Tensor, Tensor, Tensor]
+        | tuple[Tensor, list[int]]
     ):
         """
         Derives `query`, `key` and `value` tensors from `hidden_states`.
@@ -1292,7 +1310,7 @@ class SelfAttention(Attention):
 
         return query, key, value
 
-    def backward_dw(self) -> NoReturn:
+    def backward_dw(self) -> None:
         """Execute weight update operations"""
         self._backward_qkv_proj()
         self._backward_output_proj()
@@ -1421,9 +1439,9 @@ class CrossAttention(Attention):
         config: TransformerConfig,
         submodules: CrossAttentionSubmodules,
         layer_number: int,
-        attn_mask_type=AttnMaskType.padding,
-        cp_comm_type: str = None,
-        pg_collection: ProcessGroupCollection = None,
+        attn_mask_type: AttnMaskType = AttnMaskType.padding,
+        cp_comm_type: str | None = None,
+        pg_collection: ProcessGroupCollection | None = None,
     ):
         super().__init__(
             config=config,
@@ -1464,8 +1482,12 @@ class CrossAttention(Attention):
         )
 
     def get_query_key_value_tensors(
-        self, hidden_states, key_value_states, output_gate=False, split_qkv=True
-    ):
+        self,
+        hidden_states: Tensor,
+        key_value_states: Optional[Tensor],
+        output_gate: bool = False,
+        split_qkv: bool = True,
+    ) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Derives `query` tensor from `hidden_states`, and `key`/`value` tensors
         from `key_value_states`.
