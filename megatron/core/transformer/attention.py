@@ -113,8 +113,8 @@ except ImportError:
     HAVE_FUSED_QKV_ROPE = False
 
 
-class LinearQkv(Protocol):
-    """Protocol for linear_qkv modules."""
+class LinearQkvInterface(Protocol):
+    """Interface required for linear_qkv modules."""
 
     def forward(self, input: Tensor, /) -> tuple[Tensor, object]:
         """Applies linear_qkv."""
@@ -142,11 +142,11 @@ class LinearQkvBuilder(Protocol):
         is_expert: bool,
         tp_comm_buffer_name: str,
         tp_group: torch.distributed.ProcessGroup | None = None,
-    ) -> LinearQkv: ...
+    ) -> LinearQkvInterface: ...
 
 
-class LinearLayer(Protocol):
-    """Protocol for linear_q and linear_kv modules."""
+class LinearLayerInterface(Protocol):
+    """Interface required for linear_q and linear_kv modules."""
 
     def forward(self, input: Tensor, /) -> Tuple[Tensor, object]:
         """Applies linear_q/linear_kv."""
@@ -168,23 +168,23 @@ class LinearLayerBuilder(Protocol):
         bias: bool,
         skip_bias_add: bool,
         is_expert: bool,
-    ) -> LinearLayer: ...
+    ) -> LinearLayerInterface: ...
 
 
-class CoreAttention(Protocol):
-    """Protocol for core_attention modules."""
+class CoreAttentionInterface(Protocol):
+    """Interface required for core_attention modules."""
 
     def forward(
         self,
         query: Tensor,
         key: Tensor,
         value: Tensor,
-        attention_mask: Optional[Tensor],
+        attention_mask: Tensor | None,
         /,
         *,
         attn_mask_type: AttnMaskType,
-        attention_bias: Optional[Tensor],
-        packed_seq_params: Optional[PackedSeqParams],
+        attention_bias: Tensor | None,
+        packed_seq_params: PackedSeqParams | None,
     ) -> Tensor:
         """Applies dot product attention."""
         ...
@@ -200,10 +200,10 @@ class CoreAttentionBuilder(Protocol):
         layer_number: int,
         attn_mask_type: AttnMaskType,
         attention_type: str,
-        cp_comm_type: Optional[str],
-        softmax_scale: Optional[float],
-        pg_collection: Optional[ProcessGroupCollection],
-    ) -> CoreAttention: ...
+        cp_comm_type: str | None,
+        softmax_scale: float | None,
+        pg_collection: ProcessGroupCollection | None,
+    ) -> CoreAttentionInterface: ...
 
 
 @dataclass
@@ -1578,10 +1578,10 @@ class CrossAttention(Attention):
     def get_query_key_value_tensors(
         self,
         hidden_states: Tensor,
-        key_value_states: Optional[Tensor],
+        key_value_states: Tensor | None,
         output_gate: bool = False,
         split_qkv: bool = True,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """
         Derives `query` tensor from `hidden_states`, and `key`/`value` tensors
         from `key_value_states`.
