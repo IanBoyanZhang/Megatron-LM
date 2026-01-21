@@ -246,6 +246,7 @@ class DynamicInferenceRequest(InferenceRequest):
     prompt_tokens: Optional[torch.Tensor] = None
     # remaining prompt tokens are used for chunked prefill
     remaining_prompt_tokens: Optional[torch.Tensor] = None
+    num_steps_off_policy: Optional[torch.Tensor] = None
     latency: Optional[float] = None
     finished_chunk_token_count = 0
     stop_word_ids: Optional[List[List[int]]] = None  # Tokenized stop words (populated internally)
@@ -433,6 +434,28 @@ class DynamicInferenceRequestRecord:
 
         old_request = self[-1]
 
+        # Increment off-policy counter.
+        num_steps_off_policy = old_request.num_steps_off_policy
+        if num_steps_off_policy is None:
+            num_steps_off_policy = torch.tensor(
+                len(old_request.prompt_tokens) + len(old_request.generated_tokens),
+                dtype=torch.int32,
+                device=old_request.prompt_tokens.device,
+            )
+        else:
+            num_steps_off_policy += 1
+            num_steps_off_policy = torch.cat(
+                (
+                    num_steps_off_policy,
+                    torch.tensor(
+                        len(old_request.generated_tokens),
+                        dtype=num_steps_off_policy.dtype,
+                        device=num_steps_off_policy.device,
+                    ),
+                ),
+                dim=0,
+            )
+
         # New prompt (concatenate prompt + generated tokens).
         new_prompt_tokens = torch.cat(
             (
@@ -462,6 +485,7 @@ class DynamicInferenceRequestRecord:
             request_id=old_request.request_id,
             prompt_tokens=new_prompt_tokens,
             sampling_params=new_sampling_params,
+            num_steps_off_policy=num_steps_off_policy,
         )
         self.requests.append(new_request)
 
