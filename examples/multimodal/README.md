@@ -16,7 +16,7 @@ You can build a docker container using `examples/multimodal/Dockerfile` to run t
 
 ### Language model
 
-Follow the instructions in [Mistral](../../docs/llama_mistral.md#mistral-7b) to download weights for Mistral-7B-Instruct-v0.3 from HuggingFace and convert to mcore format with tensor parallel size 4.
+Follow the instructions in [Mistral](../../docs/llama_mistral.md#mistral-7b) to download weights for Mistral-7B-Instruct-v0.3 from HuggingFace and convert to mcore format with tensor parallel size 1.
 Please use the tokenizer from HuggingFace.
 
 ### Vision model
@@ -24,7 +24,7 @@ Please use the tokenizer from HuggingFace.
 This example uses the OpenAI CLIP `ViT-L/14@336px` Vision model. To download the weights from OpenAI and convert them to a format that can be loaded in megatron, please run the following:
 
 ```
-python examples/multimodal/model_converter/clip_converter.py --download-root /some/download/folder --output /some/output/folder --tensor-parallel-size 4 --use-te
+python examples/multimodal/model_converter/clip_converter.py --download-root /some/download/folder --output /some/output/folder --tensor-parallel-size 1 --use-te
 ```
 
 ### Combined model checkpoint
@@ -32,7 +32,7 @@ python examples/multimodal/model_converter/clip_converter.py --download-root /so
 Update the paths to point to the mcore converted CLIP and Mistral models and run the following script to combine the Mistral and CLIP models into a single multimodal checkpoint folder:
 
 ```
-examples/multimodal/combine_lm_vision_checkpoints.sh /path/to/mistral/model /path/to/clip/model /output/dir
+examples/multimodal/combine_lm_vision_checkpoints.sh /path/to/mistral/model /path/to/clip/model /output/dir "tp1"
 ```
 
 ## Training
@@ -44,6 +44,11 @@ examples/multimodal/combine_lm_vision_checkpoints.sh /path/to/mistral/model /pat
     ```
     git clone https://huggingface.co/datasets/liuhaotian/LLaVA-Pretrain
     cd LLaVA-Pretrain
+    
+    apt-get update && apt-get install -y git-lfs
+    git lfs install
+    git lfs pull
+    
     unzip images.zip
     ```
 
@@ -66,7 +71,7 @@ examples/multimodal/combine_lm_vision_checkpoints.sh /path/to/mistral/model /pat
     ```
     > Please enter a desired train/val/test split like "0.5, 0.2, 0.3" or "8,1,1": 9,1,0
     > Do you want to create a dataset.yaml interactively? [Y/n]: Y
-    > Please enter a number to choose a class: 10 (VQAWebdataset)
+    > Please enter a number to choose a class: 9 (VQASample)
     > Do you want to set a simple field_map[Y] (or write your own sample_loader [n])? [Y/n]: Y
     > Please enter a webdataset field name for 'image' (<class 'torch.Tensor'>): jpg
     > Please enter a webdataset field name for 'context' (<class 'str'>): json[0][value]
@@ -79,6 +84,8 @@ examples/multimodal/combine_lm_vision_checkpoints.sh /path/to/mistral/model /pat
 6. Run the following script to pretrain a llava model for image captioning:
 
     ```
+    export WORKSPACE=</path/to/save/checkpoints>
+    export LOAD_NAME=llava
     cd <megatron-lm dir>
     examples/multimodal/pretrain_mistral_clip.sh
     ```

@@ -71,7 +71,7 @@ OPTIONS=" \
     --swiglu \
     --attention-dropout 0.0 \
     --hidden-dropout ${HD} \
-    --tensor-model-parallel-size 4 \
+    --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 32 \
     --hidden-size 4096 \
