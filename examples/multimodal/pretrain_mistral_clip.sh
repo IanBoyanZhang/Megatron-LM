@@ -53,6 +53,7 @@ OPTIONS=" \
     --apply-layernorm-1p \
     --attention-softmax-in-fp32 \
     --use-checkpoint-args \
+    --no-use-tokenizer-model-from-checkpoint-args \
     --use-distributed-optimizer \
     --transformer-impl transformer_engine \
     --use-te \
@@ -129,4 +130,5 @@ OPTIONS=" \
 export NVTE_APPLY_QK_LAYER_SCALING=0
 export NVTE_ALLOW_NONDETERMINISTIC_ALGO=${NONDETERMINISTIC_ATTN}
 
-torchrun --nproc_per_node 8 examples/multimodal/train.py ${OPTIONS}
+# torchrun --nproc_per_node 1 examples/multimodal/train.py ${OPTIONS}
+python examples/multimodal/train.py ${OPTIONS}
